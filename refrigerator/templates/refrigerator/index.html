@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fridge Manager</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <header>
+        <h1>Fridge Manager</h1>
+        <form method="post" action="/logout/" style="position:absolute; top:1.5rem; right:2rem;">
+            {% csrf_token %}
+            <button type="submit" style="background:#e74c3c; color:#fff; border:none; border-radius:5px; padding:0.5rem 1rem; cursor:pointer;">Logout</button>
+        </form>
+    </header>
+    <main>
+        <section>
+            <h2>Your Refrigerator Contents</h2>
+            <ul id="fridge-contents">
+                {% for item in items %}
+                    <li>
+                        {{ item.name }} - {{ item.quantity }}
+                        <form method="post" action="/delete_item/" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ item.pk }}">
+                            <button type="submit">Delete</button>
+                        </form>
+                        <form method="post" action="/update_item_quantity/" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ item.pk }}">
+                            <input type="number" name="new_quantity" min="1" value="{{ item.quantity }}" style="width:60px;">
+                            <button type="submit">Update</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+            <form method="post" action="/add_item/" style="margin-top:1.5rem;">
+                {% csrf_token %}
+                <input type="text" name="item_name" placeholder="Item name" required>
+                <input type="number" name="item_quantity" min="1" placeholder="Quantity" required>
+                <button type="submit">Add Item</button>
+            </form>
+            <form method="post" action="/clear_all_items/" style="margin-top:1rem;">
+                {% csrf_token %}
+                <button type="submit" style="background:#e74c3c;">Clear All Items</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
