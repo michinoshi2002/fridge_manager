@@ -5,12 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fridge Manager</title>
+    <!-- Load common stylesheet -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
     <header>
         <h1>Fridge Manager</h1>
-        <form method="post" action="/logout/" style="position:absolute; top:1.5rem; right:2rem;">
+        <!-- Display logged-in username -->
+        <div style="position:absolute; top:1.5rem; left:2rem; font-size:1.1em; color:#2c3e50;">
+            Welcome, {{ request.user.username }}
+        </div>
+        <!-- Logout button -->
+        <form method="post" action="{% url 'logout' %}" style="position:absolute; top:1.5rem; right:2rem;">
             {% csrf_token %}
             <button type="submit" style="background:#e74c3c; color:#fff; border:none; border-radius:5px; padding:0.5rem 1rem; cursor:pointer;">Logout</button>
         </form>
@@ -18,15 +24,25 @@
     <main>
         <section>
             <h2>Your Refrigerator Contents</h2>
+            <!-- Message display (error/success) -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="message">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+            <!-- Item list -->
             <ul id="fridge-contents">
                 {% for item in items %}
                     <li>
                         {{ item.name }} - {{ item.quantity }}
+                        <span style="color: #888; font-size: 0.9em;">(added on {{ item.added_on }})</span>
+                        <!-- Delete button -->
                         <form method="post" action="/delete_item/" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="item_id" value="{{ item.pk }}">
                             <button type="submit">Delete</button>
                         </form>
+                        <!-- Quantity update form -->
                         <form method="post" action="/update_item_quantity/" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="item_id" value="{{ item.pk }}">
@@ -36,12 +52,14 @@
                     </li>
                 {% endfor %}
             </ul>
+            <!-- Add item form -->
             <form method="post" action="/add_item/" style="margin-top:1.5rem;">
                 {% csrf_token %}
                 <input type="text" name="item_name" placeholder="Item name" required>
                 <input type="number" name="item_quantity" min="1" placeholder="Quantity" required>
                 <button type="submit">Add Item</button>
             </form>
+            <!-- Clear all items button -->
             <form method="post" action="/clear_all_items/" style="margin-top:1rem;">
                 {% csrf_token %}
                 <button type="submit" style="background:#e74c3c;">Clear All Items</button>

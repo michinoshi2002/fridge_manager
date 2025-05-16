@@ -1,26 +1,56 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate as django_authenticate
-from .models import Item, User
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from .models import Item
 import openai
 import datetime
 
-# Set your OpenAI API key
+# OpenAI API key setting (not used)
 openai.api_key = 'your_openai_api_key'
 
+@login_required
+# Main page: list of fridge items
 def index(request):
-    if not request.session.get('logged_in'):
-        return redirect('login')
-    items = Item.objects.all()
+    items = Item.objects.filter(user=request.user)
     return render(request, 'refrigerator/index.html', {'items': items})
 
-def login(request):
+# Sign up (user registration)
+def signup(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        if username == 'admin' and password == 'password':  # Dummy check
-            request.session['logged_in'] = True
+        password2 = request.POST.get('password2')
+        # Check for duplicate username
+        if User.objects.filter(username=username).exists():
+            messages.error(request, "Username already exists")
+            return redirect('signup')
+        # Required input check
+        if not username or not password:
+            messages.error(request, "Username and password are required")
+            return redirect('signup')
+        # Password match check
+        if password != password2:
+            messages.error(request, "Passwords do not match")
+            return redirect('signup')
+        # Create user
+        user = User.objects.create_user(username=username, password=password)
+        user.save()
+        messages.success(request, "User created successfully")
+        return redirect('login')
+    else:
+        return render(request, 'refrigerator/signup.html')
+
+# Login
+# Function name is login_view (to avoid conflict with Django's login function)
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
             return redirect('index')
         else:
             messages.error(request, "Invalid username or password")
@@ -28,60 +58,66 @@ def login(request):
     else:
         return render(request, 'refrigerator/login.html')
 
-def logout(request):
-    if request.method == 'POST':
-        request.session['logged_in'] = False
-        message = "Logged out successfully"
-        return render(request, 'refrigerator/login.html', {'message': message})
+# Logout
+# Always return an HttpResponse
+def logout_view(request):
+    logout(request)
+    messages.success(request, "Logged out successfully")
+    return redirect('login')
 
+# Add item
+@login_required
 def add_item(request):
     if request.method == 'POST':
         item_name = request.POST.get('item_name')
         item_quantity = request.POST.get('item_quantity')
         current_date = datetime.datetime.now().date()
-        
         if item_name and item_quantity:
-            user = User.objects.first()  # 仮のユーザー（本来はログインユーザーを使う）
-            item = Item(user=user, name=item_name, quantity=item_quantity, date_of_purchase=current_date)
-            item.save()
+            user = User.objects.get(username=request.user.username)
+            # Prevent duplicate item names for the same user
+            if Item.objects.filter(user=user, name=item_name).exists():
+                messages.error(request, "Item already exists")
+            else:
+                item = Item(user=user, name=item_name, quantity=item_quantity, added_on=current_date)
+                item.save()
+                messages.success(request, "Item added successfully")
         return redirect('index')
-    
     return redirect('index')
 
+# Delete item
+@login_required
 def delete_item(request):
     if request.method == 'POST':
         item_id = request.POST.get('item_id')
-        
         try:
             item = Item.objects.get(id=item_id)
             item.delete()
         except Item.DoesNotExist:
             pass
-    
     return redirect('index')
 
+# Update item quantity
+@login_required
 def update_item_quantity(request):
     if request.method == 'POST':
         item_id = request.POST.get('item_id')
         new_quantity = request.POST.get('new_quantity')
-        
         try:
             item = Item.objects.get(id=item_id)
             item.quantity = new_quantity
             item.save()
         except Item.DoesNotExist:
             pass
-    
     return redirect('index')
 
+# Clear all items
+@login_required
 def clear_all_items(request):
     if request.method == 'POST':
         Item.objects.all().delete()
-    
     return redirect('index')
 
-# Will do it later.
-
+# --- Below are unimplemented features such as recipe suggestions ---
 # def suggest_recipes(request):
 #     if request.method == 'POST':
 #         item_names = request.POST.getlist('items')
@@ -93,16 +129,16 @@ def clear_all_items(request):
 #                 {"role": "user", "content": prompt}
 #             ]
 #         )
-        
+#         
 #         recipes = response['choices'][0]['message']['content']
 #         return render(request, 'refrigerator/recipes.html', {'recipes': recipes})
-    
+#     
 #     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 # def recipes(request):
-#     # 仮のレシピリスト
+#     # Temporary recipe list
 #     recipes_list = [
-#         {"title": "オムレツ", "ingredients": ["卵", "牛乳", "塩"]},
-#         {"title": "サラダ", "ingredients": ["レタス", "トマト", "きゅうり"]},
+#         {"title": "Omelette", "ingredients": ["Eggs", "Milk", "Salt"]},
+#         {"title": "Salad", "ingredients": ["Lettuce", "Tomato", "Cucumber"]},
 #     ]
 #     return render(request, "refrigerator/recipes.html", {"recipes": recipes_list})

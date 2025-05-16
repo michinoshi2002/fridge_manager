@@ -4,29 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Fridge Manager</title>
+    <title>Sign Up - Fridge Manager</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
 </head>
 <body>
     <div class="login-container">
-        <h2>Login</h2>
+        <h2>Sign Up</h2>
         <!-- Message display (error/success) -->
         {% if messages %}
             {% for message in messages %}
                 <div class="message">{{ message }}</div>
             {% endfor %}
         {% endif %}
-        <!-- Login form -->
-        <form method="post" action="{% url 'login' %}">
+        <!-- Sign up form (with password confirmation) -->
+        <form method="post" action="{% url 'signup' %}">
             {% csrf_token %}
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
+            <input type="password" name="password2" placeholder="Confirm Password" required>
+            <button type="submit">Sign Up</button>
         </form>
-        <!-- Link to sign up page -->
+        <!-- Link to login page -->
         <div style="margin-top: 1rem; text-align: center;">
-            <a href="{% url 'signup' %}" class="button" style="color: #3498db; text-decoration: underline;">Sign up</a>
+            <a href="{% url 'login' %}" class="button" style="color: #3498db; text-decoration: underline;">Back to Login</a>
         </div>
     </div>
 </body>
