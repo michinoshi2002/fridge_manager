@@ -15,12 +15,13 @@ header {
 }
 
 main {
-    max-width: 600px;
+    max-width: 1200px;
     margin: 2rem auto;
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.07);
     padding: 2rem;
+    width: 95%;
 }
 
 h1, h2 {
@@ -64,4 +65,170 @@ footer {
     color: #888;
     font-size: 0.95rem;
     margin: 2rem 0 1rem 0;
+}
+
+.small-btn {
+    font-size: 0.85em;
+    padding: 2px 8px;
+    margin-right: 4px;
+    border-radius: 4px;
+}
+
+.fridge-welcome {
+    position: absolute;
+    top: 1.5rem;
+    left: 2rem;
+    font-size: 1.1em;
+    color: #2c3e50;
+    z-index: 10;
+    background: transparent;
+    border-radius: 0;
+    font-weight: normal;
+}
+
+.fridge-logout {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    z-index: 10;
+    background: transparent;
+    border-radius: 0;
+}
+
+.fridge-clear-btn,
+.fridge-logout-btn {
+    background: #e74c3c !important;
+    color: #fff !important;
+    border: none;
+}
+
+.fridge-added-on {
+    color: #888;
+    font-size: 0.9em;
+}
+
+.fridge-update-form {
+    margin-left: 10px;
+    display: inline;
+}
+
+/* --- Two-column layout for fridge and recipes --- */
+.fridge-main-container {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    width: 100%;
+}
+.fridge-main-container section {
+    flex: 2;
+    min-width: 350px;
+}
+.fridge-main-container aside {
+    flex: 1;
+    min-width: 250px;
+    background: #f8f8f8;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 0 8px #eee;
+}
+@media (max-width: 1200px) {
+    main {
+        max-width: 98vw;
+        padding: 1rem;
+    }
+}
+@media (max-width: 900px) {
+    .fridge-main-container {
+        flex-direction: column;
+    }
+    .fridge-main-container aside {
+        margin-top: 2rem;
+        min-width: unset;
+    }
+    main {
+        max-width: 100vw;
+        padding: 0.5rem;
+    }
+}
+/* --- End two-column layout styles --- */
+
+/* --- Recipe suggestion sidebar styles --- */
+.recipe-title {
+    background: none;
+    border: none;
+    color: #2d7ff9;
+    cursor: pointer;
+    text-align: left;
+    font-size: 1em;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+}
+.recipe-title:hover {
+    text-decoration: underline;
+}
+.recipe-details {
+    display: none;
+    margin-top: 0.5em;
+}
+#suggested-recipes-placeholder {
+    color: #888;
+    font-size: 1.05em;
+    margin-top: 1rem;
+}
+#recipe-list pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+}
+/* --- End recipe suggestion sidebar styles --- */
+
+/* --- Custom styles for recipe and item selection UI --- */
+.item-checkbox-list {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-bottom: 0.5em;
+}
+.item-checkbox-label {
+    display: block;
+    font-weight: normal;
+    margin-bottom: 2px;
+}
+.recipes-divider {
+    margin: 2em 0;
+    border: none;
+    border-top: 1px solid #e0e0e0;
+}
+/* --- End custom styles --- */
+
+.message {
+    background: #ffeaea;
+    color: #c0392b;
+    border: 1px solid #e74c3c;
+    border-radius: 8px;
+    padding: 0.75em 1em;
+    margin-bottom: 1em;
+    font-size: 1em;
+    font-weight: 500;
+    box-shadow: 0 1px 4px rgba(231,76,60,0.08);
+}
+
+/* Success message style */
+.message.success,
+.message-success {
+    background: #eaffea;
+    color: #27ae60;
+    border: 1px solid #2ecc40;
+}
+
+/* Error message style (optional, for clarity) */
+.message.error,
+.message-error {
+    background: #ffeaea;
+    color: #c0392b;
+    border: 1px solid #e74c3c;
 }

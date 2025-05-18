@@ -5,66 +5,204 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fridge Manager</title>
-    <!-- Load common stylesheet -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
+    <!-- Hidden CSRF token for JS form submissions -->
+    <form id="csrf-token-form" style="display:none;">
+        {% csrf_token %}
+    </form>
     <header>
         <h1>Fridge Manager</h1>
-        <!-- Display logged-in username -->
-        <div style="position:absolute; top:1.5rem; left:2rem; font-size:1.1em; color:#2c3e50;">
+        <div class="fridge-welcome">
             Welcome, {{ request.user.username }}
         </div>
-        <!-- Logout button -->
-        <form method="post" action="{% url 'logout' %}" style="position:absolute; top:1.5rem; right:2rem;">
+        <form method="post" action="{% url 'logout' %}" class="fridge-logout">
             {% csrf_token %}
-            <button type="submit" style="background:#e74c3c; color:#fff; border:none; border-radius:5px; padding:0.5rem 1rem; cursor:pointer;">Logout</button>
+            <button type="submit" class="fridge-logout-btn">Logout</button>
         </form>
     </header>
     <main>
-        <section>
-            <h2>Your Refrigerator Contents</h2>
-            <!-- Message display (error/success) -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="message">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-            <!-- Item list -->
-            <ul id="fridge-contents">
-                {% for item in items %}
-                    <li>
-                        {{ item.name }} - {{ item.quantity }}
-                        <span style="color: #888; font-size: 0.9em;">(added on {{ item.added_on }})</span>
-                        <!-- Delete button -->
-                        <form method="post" action="/delete_item/" style="display:inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="item_id" value="{{ item.pk }}">
-                            <button type="submit">Delete</button>
-                        </form>
-                        <!-- Quantity update form -->
-                        <form method="post" action="/update_item_quantity/" style="display:inline;">
-                            {% csrf_token %}
-                            <input type="hidden" name="item_id" value="{{ item.pk }}">
-                            <input type="number" name="new_quantity" min="1" value="{{ item.quantity }}" style="width:60px;">
-                            <button type="submit">Update</button>
-                        </form>
-                    </li>
-                {% endfor %}
-            </ul>
-            <!-- Add item form -->
-            <form method="post" action="/add_item/" style="margin-top:1.5rem;">
-                {% csrf_token %}
-                <input type="text" name="item_name" placeholder="Item name" required>
-                <input type="number" name="item_quantity" min="1" placeholder="Quantity" required>
-                <button type="submit">Add Item</button>
-            </form>
-            <!-- Clear all items button -->
-            <form method="post" action="/clear_all_items/" style="margin-top:1rem;">
-                {% csrf_token %}
-                <button type="submit" style="background:#e74c3c;">Clear All Items</button>
-            </form>
-        </section>
+        <div class="fridge-main-container">
+            <section>
+                <h2>Your Refrigerator Contents</h2>
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="message{% if message.tags %} {{ message.tags }}{% endif %}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+                <ul id="fridge-contents">
+                    {% for item in items %}
+                        <li>
+                            {% if item.quantity >= 1 %}
+                                {{ item.name }} - {{ item.quantity }}{% if item.quantity_fraction %} and {{ item.quantity_fraction }}{% endif %} {{ item.get_how_to_count_display }}
+                            {% elif item.quantity == 0 and item.quantity_fraction %}
+                                {{ item.name }} - {{ item.quantity_fraction }} {{ item.get_how_to_count_display }}
+                            {% elif item.quantity == 0 and not item.quantity_fraction %}
+                                <span style="color: #e74c3c; font-weight: bold;">{{ item.name }} - 0 {{ item.get_how_to_count_display }} (Empty! <a href="#" onclick="return confirmDeleteItem('{{ item.pk }}');" style="color:#e74c3c;text-decoration:underline;">Delete?</a>)</span>
+                            {% endif %}
+                            <span class="fridge-added-on">(added on {{ item.added_on }})</span>
+                            <button id="edit-btn-{{ item.pk }}" type="button" onclick="showUpdateForm('{{ item.pk }}')" class="small-btn">Edit</button>
+                            <form id="update-form-{{ item.pk }}" method="post" action="/update_item_quantity/" class="fridge-update-form" style="display:none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="item_id" value="{{ item.pk }}">
+                                <button id="cancel-btn-{{ item.pk }}" type="button" onclick="hideUpdateForm('{{ item.pk }}')" class="small-btn" style="display:none;">Cancel</button>
+                                <input id="update-qty-{{ item.pk }}" type="number" name="new_quantity" min="0" value="{{ item.quantity }}" style="width:60px; display:none;">
+                                <!-- Fraction select UI, only in edit -->
+                                <select id="update-fraction-{{ item.pk }}" name="new_fraction" style="display:none;">
+                                    <option value="" {% if not item.quantity_fraction %}selected{% endif %}>--</option>
+                                    <option value="1/4" {% if item.quantity_fraction == "1/4" %}selected{% endif %}>¼</option>
+                                    <option value="1/2" {% if item.quantity_fraction == "1/2" %}selected{% endif %}>½</option>
+                                </select>
+                                <button id="update-btn-{{ item.pk }}" type="submit" class="small-btn" style="display:none;">Update</button>
+                                <button id="delete-btn-{{ item.pk }}" type="submit" form="delete-form-{{ item.pk }}" class="small-btn" style="display:none;">Delete</button>
+                            </form>
+                            <form id="delete-form-{{ item.pk }}" method="post" action="/delete_item/" style="display:none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="item_id" value="{{ item.pk }}">
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form method="post" action="/add_item/" style="margin-top:1.5rem;">
+                    {% csrf_token %}
+                    <input type="text" name="item_name" placeholder="Item name" required>
+                    <input type="number" name="item_quantity" min="1" placeholder="Quantity" required>
+                    <select name="how_to_count" required>
+                        <option value=0>pcs</option>
+                        <option value=1>ml</option>
+                        <option value=2>g</option>
+                        <option value=3>pack(s)</option>
+                    </select>
+                    <button type="submit">Add Item</button>
+                </form>
+                <form method="post" action="/clear_all_items/" style="margin-top:1rem;" onsubmit="return confirm('Are you sure you want to clear all items from your fridge?');">
+                    {% csrf_token %}
+                    <button type="submit" class="fridge-clear-btn">Clear All Items</button>
+                </form>
+            </section>
+            <aside>
+                <h2>Suggested Recipes</h2>
+                {% if recipes %}
+                <ul id="recipe-list">
+                    {% for recipe in recipes %}
+                        <li>
+                            <button class="recipe-title" type="button" onclick="toggleRecipe('suggested-{{ forloop.counter0 }}')">{{ recipe.title }}</button>
+                            <button class="save-recipe-btn" type="button" onclick="saveRecipe('{{ recipe.title|escapejs }}', '{{ recipe.details|escapejs }}')">Save</button>
+                            <div class="recipe-details" id="recipe-suggested-{{ forloop.counter0 }}">
+                                <pre>{{ recipe.details }}</pre>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div id="suggested-recipes-placeholder">
+                    Recipe suggestions will appear here.
+                </div>
+                {% endif %}
+                <form method="post" style="margin-top:1em;">
+                    {% csrf_token %}
+                    <input type="hidden" name="suggest_recipes" value="1">
+                    <div style="margin-bottom:0.5em;">
+                        <strong>Select items to use for recipe suggestions:</strong>
+                        <div class="item-checkbox-list">
+                            {% for item in items %}
+                                <label class="item-checkbox-label">
+                                    <input type="checkbox" name="selected_items" value="{{ item.name }}" checked>
+                                    {{ item.name }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                        <div style="margin-bottom:0.5em;">
+                        <label for="language-select"><strong>Recipe language:</strong></label>
+                        <select id="language-select" name="language">
+                            <option value="en">English</option>
+                            <option value="ja">Japanese</option>
+                        </select>
+                    </div>
+                    <button type="submit">Suggest Recipes</button>
+                </form>
+                <hr class="recipes-divider">
+                <h2>Saved Recipes</h2>
+                {% with saved_recipes=request.user.recipes.all %}
+                {% if saved_recipes %}
+                <ul id="saved-recipe-list">
+                    {% for recipe in saved_recipes %}
+                        <li>
+                            <button class="recipe-title" type="button" onclick="toggleRecipe('saved-{{ forloop.counter0 }}')">{{ recipe.title }}</button>
+                            <div class="recipe-details" id="recipe-saved-{{ forloop.counter0 }}">
+                                <pre>{{ recipe.instructions }}</pre>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div id="saved-recipes-placeholder">
+                    No saved recipes yet.
+                </div>
+                {% endif %}
+                {% endwith %}
+            </aside>
+        </div>
     </main>
+    <script>
+    function showUpdateForm(id) {
+        document.getElementById('update-form-' + id).style.display = 'inline';
+        document.getElementById('edit-btn-' + id).style.display = 'none';
+        document.getElementById('update-btn-' + id).style.display = 'inline';
+        document.getElementById('cancel-btn-' + id).style.display = 'inline';
+        document.getElementById('update-qty-' + id).style.display = 'inline';
+        document.getElementById('delete-btn-' + id).style.display = 'inline';
+        // Show fraction select
+        document.getElementById('update-fraction-' + id).style.display = 'inline';
+    }
+    function hideUpdateForm(id) {
+        document.getElementById('update-form-' + id).style.display = 'none';
+        document.getElementById('edit-btn-' + id).style.display = 'inline';
+        document.getElementById('update-btn-' + id).style.display = 'none';
+        document.getElementById('cancel-btn-' + id).style.display = 'none';
+        document.getElementById('update-qty-' + id).style.display = 'none';
+        document.getElementById('delete-btn-' + id).style.display = 'none';
+        // Hide fraction select
+        document.getElementById('update-fraction-' + id).style.display = 'none';
+    }
+    function confirmDeleteItem(pk) {
+        if (confirm('This item is empty. Do you want to delete it?')) {
+            document.getElementById('delete-form-' + pk).submit();
+        }
+        return false;
+    }
+    function toggleRecipe(idx) {
+        var el = document.getElementById('recipe-' + idx);
+        if (el) {
+            el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+        }
+    }
+    function saveRecipe(title, details) {
+        // Create a form and submit it to the save_recipe view
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/save_recipe/';
+        var csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        var titleInput = document.createElement('input');
+        titleInput.type = 'hidden';
+        titleInput.name = 'title';
+        titleInput.value = title;
+        form.appendChild(titleInput);
+        var detailsInput = document.createElement('input');
+        detailsInput.type = 'hidden';
+        detailsInput.name = 'details';
+        detailsInput.value = details;
+        form.appendChild(detailsInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+    </script>
 </body>
 </html>
