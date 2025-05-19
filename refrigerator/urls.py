@@ -11,4 +11,5 @@ urlpatterns = [
     path('update_item_quantity/', views.update_item_quantity, name='update_item_quantity'),  # Update quantity
     path('clear_all_items/', views.clear_all_items, name='clear_all_items'),  # Clear all items
     path('save_recipe/', views.save_recipe, name='save_recipe'),  # Save recipe
+    path('delete_saved_recipe/', views.delete_saved_recipe, name='delete_saved_recipe'),  # Delete recipe
 ]

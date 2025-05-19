@@ -84,17 +84,24 @@
             <aside>
                 <h2>Suggested Recipes</h2>
                 {% if recipes %}
-                <ul id="recipe-list">
-                    {% for recipe in recipes %}
-                        <li>
-                            <button class="recipe-title" type="button" onclick="toggleRecipe('suggested-{{ forloop.counter0 }}')">{{ recipe.title }}</button>
-                            <button class="save-recipe-btn" type="button" onclick="saveRecipe('{{ recipe.title|escapejs }}', '{{ recipe.details|escapejs }}')">Save</button>
-                            <div class="recipe-details" id="recipe-suggested-{{ forloop.counter0 }}">
-                                <pre>{{ recipe.details }}</pre>
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
+                <form method="post" action="{% url 'save_recipe' %}">
+                    {% csrf_token %}
+                    <ul id="recipe-list">
+                        {% for recipe in recipes %}
+                            <li>
+                                <label style="display:flex;align-items:center;gap:0.5em;">
+                                    <input type="checkbox" name="recipe_title" value="{{ recipe.title }}" data-details="{{ recipe.details|escapejs }}">
+                                    <span class="recipe-title" onclick="toggleRecipe('suggested-{{ forloop.counter0 }}')" style="cursor:pointer;">{{ recipe.title }}</span>
+                                </label>
+                                <input type="hidden" name="recipe_details" value="{{ recipe.details|escapejs }}">
+                                <div class="recipe-details" id="recipe-suggested-{{ forloop.counter0 }}">
+                                    <pre>{{ recipe.details|linebreaksbr }}</pre>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button type="submit">Save Selected Recipes</button>
+                </form>
                 {% else %}
                 <div id="suggested-recipes-placeholder">
                     Recipe suggestions will appear here.
@@ -131,8 +138,13 @@
                     {% for recipe in saved_recipes %}
                         <li>
                             <button class="recipe-title" type="button" onclick="toggleRecipe('saved-{{ forloop.counter0 }}')">{{ recipe.title }}</button>
+                            <form method="post" action="{% url 'delete_saved_recipe' %}" style="display:inline; margin-left: 0.5em;">
+                                {% csrf_token %}
+                                <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                                <button type="submit" class="delete-recipe-btn" onclick="return confirm('Delete this saved recipe?');" title="Delete recipe">🗑️</button>
+                            </form>
                             <div class="recipe-details" id="recipe-saved-{{ forloop.counter0 }}">
-                                <pre>{{ recipe.instructions }}</pre>
+                                <pre>{{ recipe.instructions|linebreaksbr }}</pre>
                             </div>
                         </li>
                     {% endfor %}
@@ -179,29 +191,10 @@
             el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
         }
     }
-    function saveRecipe(title, details) {
-        // Create a form and submit it to the save_recipe view
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/save_recipe/';
-        var csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
-        var csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = 'csrfmiddlewaretoken';
-        csrfInput.value = csrfToken;
-        form.appendChild(csrfInput);
-        var titleInput = document.createElement('input');
-        titleInput.type = 'hidden';
-        titleInput.name = 'title';
-        titleInput.value = title;
-        form.appendChild(titleInput);
-        var detailsInput = document.createElement('input');
-        detailsInput.type = 'hidden';
-        detailsInput.name = 'details';
-        detailsInput.value = details;
-        form.appendChild(detailsInput);
-        document.body.appendChild(form);
-        form.submit();
+    function deleteSuggestedRecipe(btn) {
+        // Remove the <li> containing this button
+        var li = btn.closest('li');
+        if (li) li.remove();
     }
     </script>
 </body>

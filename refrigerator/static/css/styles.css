@@ -170,6 +170,14 @@ footer {
 .recipe-details {
     display: none;
     margin-top: 0.5em;
+    max-width: 100%;
+    overflow-x: auto;
+    word-break: break-word;
+}
+.recipe-details pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-width: 100%;
 }
 #suggested-recipes-placeholder {
     color: #888;

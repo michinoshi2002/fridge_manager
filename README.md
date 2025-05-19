@@ -1,13 +1,13 @@
 # Fridge Manager
 
-A Django web app to manage your refrigerator contents and get AI-powered recipe suggestions.
+A Django web app to manage your refrigerator contents and get AI-powered recipe suggestions (Gemini, English & Japanese).
 
 ## Features
 
 - Add, edit, and delete fridge items
-- Suggest recipes using OpenAI GPT (supports English and Japanese)
+- Suggest recipes using Gemini (English and Japanese)
 - Save favorite recipes
-- Temporary OpenAI API key support at login
+- Temporary Gemini API key support at login
 
 ## Usage
 
@@ -16,8 +16,8 @@ A Django web app to manage your refrigerator contents and get AI-powered recipe 
    pip install -r requirements.txt
    ```
 
-2. **Set your OpenAI API key:**
-   - Option 1: Set `OPENAI_API_KEY` as an environment variable.
+2. **Set your Gemini API key:**
+   - Option 1: Set `GEMINI_API_KEY` as an environment variable.
    - Option 2: Enter a temporary API key at login.
 
 3. **Run migrations and start the server:**
@@ -29,18 +29,25 @@ A Django web app to manage your refrigerator contents and get AI-powered recipe 
 4. **Access the app:**
    - Go to [http://localhost:8000](http://localhost:8000)
 
+## Project Structure
+
+- `fridge_manager/` (project root)
+  - `refrigerator/` (main app: models, views, templates, static)
+  - `requirements.txt`
+  - `README.md`
+
 ---
 
 # Fridge Manager（日本語）
 
-冷蔵庫の中身を管理し、AI（OpenAI GPT）によるレシピ提案を受けられるDjango製Webアプリです。
+冷蔵庫の中身を管理し、AI（Gemini）によるレシピ提案を受けられるDjango製Webアプリです。
 
 ## 主な機能
 
 - 冷蔵庫アイテムの追加・編集・削除
-- OpenAI GPTを使ったレシピ提案（日本語・英語対応）
+- Geminiを使ったレシピ提案（日本語・英語対応）
 - お気に入りレシピの保存
-- ログイン時に一時的なOpenAI APIキーを利用可能
+- レスポンシブUI・一時Gemini APIキー対応
 
 ## 使い方
 
@@ -49,8 +56,8 @@ A Django web app to manage your refrigerator contents and get AI-powered recipe 
    pip install -r requirements.txt
    ```
 
-2. **OpenAI APIキーの設定：**
-   - 環境変数 `OPENAI_API_KEY` を設定する
+2. **Gemini APIキーの設定：**
+   - 環境変数 `GEMINI_API_KEY` を設定する
    - または、ログイン時に一時的なAPIキーを入力する
 
 3. **マイグレーションとサーバー起動：**
