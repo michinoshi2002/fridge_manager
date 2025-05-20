@@ -27,7 +27,7 @@ A Django web app to manage your refrigerator contents and get AI-powered recipe 
    ```
 
 4. **Access the app:**
-   - Go to [http://localhost:8000](http://localhost:8000)
+   - Go to [http://localhost:8000/login](http://localhost:8000/login)
 
 ## Project Structure
 
@@ -67,7 +67,7 @@ A Django web app to manage your refrigerator contents and get AI-powered recipe 
    ```
 
 4. **アプリにアクセス：**
-   - [http://localhost:8000](http://localhost:8000) にアクセス
+   - [http://localhost:8000/login](http://localhost:8000/login) にアクセス
 
 ## 必要環境
 
