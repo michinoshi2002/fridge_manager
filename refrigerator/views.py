@@ -10,6 +10,9 @@ import os
 from google import genai
 from google.genai import types
 
+# Gemini Model Configuration
+GEMINI_MODEL_NAME = "gemini-2.5-flash-preview-04-17"
+
 def clean_unicode_escapes(text):
     """
     Replace unicode escape sequences in the text with actual characters.
@@ -24,67 +27,83 @@ def clean_unicode_escapes(text):
             .replace('\\u003A', ':')
     )
 
+# Helper function to fetch recipes from Gemini API
+def _fetch_recipes_from_gemini(api_key: str, item_names: list[str], language: str):
+    """
+    Fetches recipe suggestions from the Gemini API.
+    Returns parsed JSON (list of dicts).
+    Can raise exceptions from the Gemini API or json.JSONDecodeError.
+    """
+    prompt = (
+        f"Suggest 3 recipes using these ingredients: {', '.join(item_names)}. "
+        "Include the list of ingridients and amounts needed for each recipe. "
+        "Other ingredients can be added as needed. "
+        "Respond in JSON format as a list of objects with 'title' and 'details' fields. "
+        "Example: [{\"title\": \"Recipe 1\", \"details\": \"Instructions here.\"}, ...]"
+    )
+    if language == 'ja':
+        prompt += " Respond in Japanese."
+    elif language == 'en':
+        prompt += " Respond in English."
+
+    client = genai.Client(api_key=api_key)
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
+    generate_content_config = types.GenerateContentConfig(response_mime_type="application/json")
+    
+    all_contents = []
+    for chunk in client.models.generate_content_stream(
+        model=GEMINI_MODEL_NAME,
+        contents=contents,
+        config=generate_content_config
+    ):
+        if chunk and getattr(chunk, 'candidates', None):
+            parts = chunk.candidates[0].content.parts
+            if parts and hasattr(parts[0], 'text'):
+                content = parts[0].text.strip()
+                all_contents.append(content)
+    
+    full_content = "".join(all_contents)
+
+    # Attempt to parse JSON, will raise json.JSONDecodeError if parsing fails
+    return json.loads(full_content)
+
 @login_required
 def index(request):
     """
-    Main page: Shows fridge items and handles recipe suggestions via Gemini 2.5 Flash API.
+    Main page: Shows fridge items and handles recipe suggestions via Gemini API.
     """
     items = Item.objects.filter(user=request.user)
-    recipes = []
+    recipes = [] # Initialize recipes list for suggested recipes
     # Use temporary API key from session if present, else use environment/global key
     api_key = request.session.get('temp_gemini_api_key') or os.environ.get('GEMINI_API_KEY')
+    
     if request.method == 'POST' and 'suggest_recipes' in request.POST:
         if not api_key:
             messages.error(request, "Please set your Gemini API key to use recipe suggestions.")
         else:
             language = request.POST.get('language')
-            selected_items = request.POST.getlist('selected_items')
-            item_names = selected_items if selected_items else [item.name for item in items]
-            prompt = (
-                f"Suggest 3 recipes using these ingredients: {', '.join(item_names)}. "
-                "Include the list of ingridients and amounts needed for each recipe. "
-                "Other ingredients can be added as needed. "
-                "Respond in JSON format as a list of objects with 'title' and 'details' fields. "
-                "Example: [{\"title\": \"Recipe 1\", \"details\": \"Instructions here.\"}, ...]"
-            )
-            if language == 'ja':
-                prompt += " Respond in Japanese."
+            selected_items_names = request.POST.getlist('selected_items')
+            item_names_for_prompt = selected_items_names if selected_items_names else [item.name for item in items]
+            
             try:
-                client = genai.Client(api_key=api_key)
-                model = "gemini-2.5-flash-preview-04-17"
-                contents = [types.Content(role="user", parts=[types.Part.from_text(text=prompt)])]
-                generate_content_config = types.GenerateContentConfig(response_mime_type="application/json")
-                all_contents = []
-                for chunk in client.models.generate_content_stream(
-                    model=model,
-                    contents=contents,
-                    config=generate_content_config):
-                    if chunk and getattr(chunk, 'candidates', None):
-                        parts = chunk.candidates[0].content.parts
-                        if parts and hasattr(parts[0], 'text'):
-                            content = parts[0].text.strip()
-                            all_contents.append(content)
-                # Join all streamed contents and parse as JSON
-                full_content = "".join(all_contents)
-                try:
-                    recipes = json.loads(full_content)
-                except Exception:
-                    # Try to extract a title from the first line or up to the first newline/period
-                    lines = full_content.strip().splitlines()
-                    first_line = lines[0] if lines else full_content.strip()
-                    # Use up to the first 40 chars or first period as a fallback title
-                    fallback_title = first_line[:40].split('。')[0].split('.')[0]
-                    if not fallback_title:
-                        fallback_title = "Raw Gemini Output"
-                    recipes = [{"title": fallback_title, "details": full_content}]
-            except Exception as e:
-                messages.error(request, f"Gemini API error: {e}")
-    # Replace literal '\u000A' with real newlines in saved recipe instructions
+                # api_response is now expected to be parsed JSON (list of dicts)
+                # or an exception will be raised by _fetch_recipes_from_gemini
+                recipes = _fetch_recipes_from_gemini(api_key, item_names_for_prompt, language)
+
+            except types.BlockedPromptException as e:
+                messages.error(request, f"Recipe suggestion blocked by content policy: {e}")
+            except types.StopCandidateException as e: 
+                messages.error(request, f"Recipe suggestion stopped prematurely: {e}")
+            except json.JSONDecodeError as e: # Specifically catch JSON decoding errors
+                messages.error(request, f"Failed to parse recipe suggestions from the API: {e}")
+            except Exception as e: # Fallback for any other unexpected errors
+                messages.error(request, f"An unexpected error occurred while fetching recipes: {e}")
+                
     saved_recipes = request.user.recipes.all()
     for recipe in saved_recipes:
         if recipe.instructions:
             recipe.instructions = clean_unicode_escapes(recipe.instructions)
-    return render(request, 'refrigerator/index.html', {'items': items, 'recipes': recipes})
+    return render(request, 'refrigerator/index.html', {'items': items, 'recipes': recipes, 'saved_recipes': saved_recipes})
 
 def signup(request):
     """
@@ -155,7 +174,7 @@ def add_item(request):
         how_to_count = request.POST.get('how_to_count')
         current_date = datetime.datetime.now().date()
         if item_name and item_quantity and how_to_count is not None:
-            user = User.objects.get(username=request.user.username)
+            user = request.user
             if Item.objects.filter(user=user, name=item_name).exists():
                 messages.error(request, "Item already exists")
             else:
@@ -184,10 +203,11 @@ def delete_item(request):
 @login_required
 def clear_all_items(request):
     """
-    Remove all items from the fridge.
+    Remove all items from the current user's fridge.
     """
     if request.method == 'POST':
-        Item.objects.all().delete()
+        Item.objects.filter(user=request.user).delete()
+        messages.success(request, "All your items have been cleared.")
     return redirect('index')
 
 
@@ -222,10 +242,10 @@ def save_recipe(request):
         user = request.user
         saved_count = 0
         for title, details in zip(titles, details_list):
-            details = clean_unicode_escapes(details)
+            cleaned_details = clean_unicode_escapes(details) # Clean details before saving
             # Prevent duplicate saves for the same user/title
             if not Recipes.objects.filter(user=user, title=title).exists():
-                Recipes.objects.create(user=user, title=title, instructions=details)
+                Recipes.objects.create(user=user, title=title, instructions=cleaned_details)
                 saved_count += 1
         if saved_count:
             messages.success(request, f"{saved_count} recipe(s) saved!")
